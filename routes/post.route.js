@@ -2,6 +2,8 @@ const express = require("express");
 const Post = require("../models/Post");
 const router = express.Router();
 const authenticate = require("../middlewares/authenticate");
+const postValidator = require("../validators/post.validator");
+const validate = require("../utils/validate");
 
 router.get("/", authenticate, async (req, res) => {
   try {
@@ -12,7 +14,7 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", validate(postValidator), async (req, res) => {
   const post = new Post({
     title: req.body.title,
     description: req.body.description,

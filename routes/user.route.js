@@ -4,8 +4,13 @@ const jwt = require("../utils/jwt");
 const User = require("../models/User");
 const UserSession = require("../models/UserSession");
 const router = express.Router();
+const validate = require("../utils/validate");
+const {
+  userValidator,
+  tokenValidator,
+} = require("../validators/user.validator");
 
-router.post("/signUp", async (req, res) => {
+router.post("/signUp", validate(userValidator), async (req, res) => {
   try {
     const password = await bcrypt.hash(req.body.password);
     const user = new User({
@@ -20,7 +25,7 @@ router.post("/signUp", async (req, res) => {
   }
 });
 
-router.post("/signin", async (req, res) => {
+router.post("/signin", validate(userValidator), async (req, res) => {
   const user = await User.findOne({ username: req.body.username });
   const isSame = await bcrypt.compare(req.body.password, user.password);
 
@@ -37,13 +42,13 @@ router.post("/signin", async (req, res) => {
   res.send({ accessToken, refreshToken });
 });
 
-router.post("/signout", async (req, res) => {
+router.post("/signout", validate(tokenValidator), async (req, res) => {
   const usersession = await UserSession.findOne({
     token: req.body.refreshToken,
   });
-  console.log(usersession);
+
   if (!usersession || !usersession.active) {
-    res.send({ message: "no session with given token present" });
+    res.status(400).send({ message: "no session with given token present" });
   }
   const response = await UserSession.updateOne({
     _id: usersession._id,
@@ -53,20 +58,20 @@ router.post("/signout", async (req, res) => {
   res.send(200);
 });
 
-router.post("/refresh", async (req, res) => {
+router.post("/refresh", validate(tokenValidator), async (req, res) => {
   try {
     const usersession = await UserSession.findOne({
       token: req.body.refreshToken,
     });
     if (!usersession || !usersession.active) {
-      res.send({ message: "no session with given token present" });
+      res.status(400).send({ message: "no session with given token present" });
     }
     const isVerified = await jwt.verifyRefreshToken(req.body.refreshToken);
     if (!isVerified) {
-      res.send({ message: "refresh token expired" });
+      res.status(401).send({ message: "refresh token expired" });
     }
     const accessToken = await jwt.generateAccessToken(isVerified);
-    res.send({ accessToken });
+    res.status(200).send({ accessToken });
   } catch (err) {
     res.send(400);
   }
